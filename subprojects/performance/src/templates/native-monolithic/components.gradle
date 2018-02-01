@@ -29,7 +29,7 @@ model {
             }
             binaries.all {
                 // TODO: Use dependency graph builder to created a layered native build
-                <% prebuiltlibraries.times { %>.coordinate
+                <% prebuiltLibraries.times { %>
                 // TODO: Use a different linkage
                 lib project: ':', library: "prebuilt$it", linkage: 'api'
                 <% } %>

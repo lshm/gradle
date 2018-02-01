@@ -2,7 +2,7 @@
 model {
     repositories {
         libs(PrebuiltLibraries) {
-            <% prebuiltlibraries.times { %>.coordinate
+            <% prebuiltLibraries.times { %>
             prebuilt$it {
                 headers.with {
                     srcDir "prebuilt/lib$it/include"
