@@ -15,19 +15,23 @@
  */
 package org.gradle.ide.visualstudio
 
+import org.gradle.ide.visualstudio.fixtures.AbstractVisualStudioIntegrationSpec
 import org.gradle.ide.visualstudio.fixtures.FiltersFile
 import org.gradle.ide.visualstudio.fixtures.ProjectFile
 import org.gradle.ide.visualstudio.fixtures.SolutionFile
 import org.gradle.integtests.fixtures.SourceFile
 import org.gradle.internal.os.OperatingSystem
-import org.gradle.nativeplatform.fixtures.AbstractInstalledToolChainIntegrationSpec
 import org.gradle.nativeplatform.fixtures.RequiresInstalledToolChain
-import org.gradle.nativeplatform.fixtures.app.*
+import org.gradle.nativeplatform.fixtures.app.CppHelloWorldApp
+import org.gradle.nativeplatform.fixtures.app.ExeWithDiamondDependencyHelloWorldApp
+import org.gradle.nativeplatform.fixtures.app.ExeWithLibraryUsingLibraryHelloWorldApp
+import org.gradle.nativeplatform.fixtures.app.MixedLanguageHelloWorldApp
+import org.gradle.nativeplatform.fixtures.app.WindowsResourceHelloWorldApp
 import spock.lang.Issue
 
 import static org.gradle.nativeplatform.fixtures.ToolChainRequirement.VISUALCPP
 
-class VisualStudioSingleProjectIntegrationTest extends AbstractInstalledToolChainIntegrationSpec {
+class VisualStudioSingleProjectIntegrationTest extends AbstractVisualStudioIntegrationSpec {
     private final Set<String> projectConfigurations = ['win32Debug', 'win32Release', 'x64Debug', 'x64Release'] as Set
 
     def app = new CppHelloWorldApp()
@@ -132,6 +136,72 @@ model {
         final mainSolution = solutionFile("app.sln")
         mainSolution.assertHasProjects("mainExe")
         mainSolution.assertReferencesProject(projectFile, projectConfigurations)
+    }
+
+    def "can build executable from visual studio"() {
+        useMsbuildTool()
+        def debugBinary = executable("build/exe/main/win32/debug/main")
+
+        given:
+        app.writeSources(file("src/main"))
+        buildFile << """
+model {
+    components {
+        main(NativeExecutableSpec) {
+            binaries.all {
+                cppCompiler.define "TEST"
+                cppCompiler.define "foo", "bar"
+            }
+        }
+    }
+}
+"""
+        and:
+        succeeds "visualStudio"
+
+        when:
+        debugBinary.assertDoesNotExist()
+        def resultDebug = msbuild
+            .withSolution(solutionFile("app.sln"))
+            .withConfiguration('win32Debug')
+            .succeeds()
+
+        then:
+        resultDebug.assertTasksExecuted(':compileMainWin32DebugExecutableMainCpp', ':linkMainWin32DebugExecutable', ':mainWin32DebugExecutable', ':installMainWin32DebugExecutable')
+        resultDebug.assertTasksNotSkipped(':compileMainWin32DebugExecutableMainCpp', ':linkMainWin32DebugExecutable', ':mainWin32DebugExecutable', ':installMainWin32DebugExecutable')
+        debugBinary.assertExists()
+    }
+
+    def "can build library from visual studio"() {
+        useMsbuildTool()
+        def debugBinaryLib = executable("build/lib/main/static/win32/debug/main")
+        def debugBinaryDll = executable("build/lib/main/shared/win32/debug/main")
+
+        given:
+        app.library.writeSources(file("src/main"))
+        buildFile << """
+model {
+    components {
+        main(NativeLibrarySpec)
+    }
+}
+"""
+        and:
+        succeeds "visualStudio"
+
+        when:
+        debugBinaryLib.assertDoesNotExist()
+        debugBinaryDll.assertDoesNotExist()
+        def resultDebug = msbuild
+            .withSolution(solutionFile("app.sln"))
+            .withConfiguration('win32Debug')
+            .succeeds()
+
+        then:
+        resultDebug.assertTasksExecuted(':compileMainWin32DebugStaticLibraryMainCpp', ':createMainWin32DebugStaticLibrary', ':mainWin32DebugStaticLibrary', ':compileMainWin32DebugSharedLibraryMainCpp', ':linkMainWin32DebugSharedLibrary', ':mainWin32DebugSharedLibrary')
+        resultDebug.assertTasksNotSkipped(':compileMainWin32DebugStaticLibraryMainCpp', ':createMainWin32DebugStaticLibrary', ':mainWin32DebugStaticLibrary', ':compileMainWin32DebugSharedLibraryMainCpp', ':linkMainWin32DebugSharedLibrary', ':mainWin32DebugSharedLibrary')
+        debugBinaryLib.assertExists()
+        debugBinaryDll.assertExists()
     }
 
     def "create visual studio solution for library"() {

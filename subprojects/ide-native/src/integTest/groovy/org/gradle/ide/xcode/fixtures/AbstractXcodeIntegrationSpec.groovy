@@ -128,9 +128,8 @@ Actual: ${actual[key]}
             }
             
             def gradleEnvironment = file("gradle-environment")
-            def xcodeTask = tasks.findByName('xcode')
-            if (xcodeTask) {
-                xcodeTask.doLast {
+            tasks.matching { it.name == 'xcode' }.all { ideTask ->
+                ideTask.doLast {
                     def writer = gradleEnvironment.newOutputStream()
                     gatherEnvironment().store(writer, null)
                     writer.close()

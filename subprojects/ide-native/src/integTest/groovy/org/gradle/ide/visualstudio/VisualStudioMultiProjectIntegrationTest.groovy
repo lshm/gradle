@@ -15,13 +15,13 @@
  */
 package org.gradle.ide.visualstudio
 
+import org.gradle.ide.visualstudio.fixtures.AbstractVisualStudioIntegrationSpec
 import org.gradle.ide.visualstudio.fixtures.ProjectFile
 import org.gradle.ide.visualstudio.fixtures.SolutionFile
-import org.gradle.nativeplatform.fixtures.AbstractInstalledToolChainIntegrationSpec
 import org.gradle.nativeplatform.fixtures.app.CppHelloWorldApp
 import org.gradle.nativeplatform.fixtures.app.ExeWithLibraryUsingLibraryHelloWorldApp
 
-class VisualStudioMultiProjectIntegrationTest extends AbstractInstalledToolChainIntegrationSpec {
+class VisualStudioMultiProjectIntegrationTest extends AbstractVisualStudioIntegrationSpec {
     private final Set<String> projectConfigurations = ['debug', 'release'] as Set
 
     def app = new CppHelloWorldApp()
@@ -343,7 +343,7 @@ class VisualStudioMultiProjectIntegrationTest extends AbstractInstalledToolChain
         then:
         final exeProject = projectFile("exe/exe_mainExe.vcxproj")
         exeProject.projectConfigurations.values().each {
-            assert it.buildCommand == "../gradlew.bat -p \"..\" :exe:installMain${it.name.capitalize()}Executable"
+            assert it.buildCommand == "\"../gradlew.bat\" -p \"..\" :exe:installMain${it.name.capitalize()}Executable"
         }
     }
 
